@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Dawn FM – 103.5</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon: #00f7ff; 
+            --gold: #ffd700; 
+            --text: #eaeaea;
+            --glass: rgba(5, 15, 30, 0.85); 
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            margin: 0;
+            background: #020a14; 
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            height: 100%;
+            overscroll-behavior: none;
+            position: fixed; 
+            width: 100%;
+        }
+
+        /* ================= LOADING SCREEN ================= */
+        #loader-screen {
+            position: fixed;
+            inset: 0;
+            background: #020a14; /* Matches body bg */
+            z-index: 10000; /* Highest priority */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1.5s ease-out;
+        }
+
+        #loader-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Loading Animation */
+        .loader {
+            width: fit-content;
+            font-size: 30px; /* Adjusted size for mobile */
+            line-height: 1.5;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: transparent;
+            -webkit-text-stroke: 1px var(--gold);
+            background:
+                radial-gradient(1.13em at 50% 1.6em, var(--gold) 99%, transparent 101%) calc(50% - 1.6em) 0/3.2em 100% text,
+                radial-gradient(1.13em at 50% -0.8em, transparent 99%, var(--gold) 101%) 50% .8em/3.2em 100% repeat-x text;
+            animation: l9 2s linear infinite;
+        }
+        
+        .loader:before {
+            content: "WONDER PURGATORY";
+        }
+        
+        @keyframes l9 {
+            to {background-position: calc(50% + 1.6em) 0,calc(50% + 3.2em) .8em}
+        }
+
+        /* ================= BACKGROUND ================= */
+        .bg {
+            position: fixed;
+            inset: -5%;
+            background-size: cover;
+            background-position: center;
+            z-index: -4;
+            filter: brightness(0.6) contrast(1.2);
+            /* THE UNIFIED BACKGROUND IMAGE */
+            background-image: 
+                linear-gradient(to bottom, rgba(2, 10, 25, 0.6), rgba(0, 0, 0, 0.9)),
+                url("https://wallpaperaccess.com/full/8298283.jpg");
+        }
+
+        .static-overlay {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+            opacity: 0.12;
+            mix-blend-mode: overlay;
+            z-index: -2;
+        }
+
+        /* ================= LOCK SCREEN ================= */
+        #lock-screen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, #0a2a4a 0%, #02050a 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 1.5s ease-in-out, transform 1.5s cubic-bezier(0.22, 1, 0.36, 1), filter 1.5s ease;
+            transform-origin: center center;
+            touch-action: none;
+        }
+
+        #lock-screen.unlocked {
+            opacity: 0;
+            transform: scale(1.5);
+            filter: blur(20px);
+            pointer-events: none;
+        }
+
+        .lock-content h1 { 
+            font-family: 'Orbitron'; 
+            color: var(--neon); 
+            letter-spacing: 4px; 
+            font-size: 1.2rem; 
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 15px rgba(0, 247, 255, 0.3);
+            pointer-events: none;
+        }
+
+        /* Dial UI */
+        .dial-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto;
+            border-radius: 50%;
+            background: #0a0a0a;
+            border: 4px solid #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 50px rgba(0, 10, 30, 0.9);
+            cursor: grab;
+            touch-action: none; 
+            user-select: none;
+        }
+
+        .dial-container:active { cursor: grabbing; }
+
+        .dial-knob {
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1a1a1a, #050505);
+            border: 2px solid #222;
+            position: relative;
+            pointer-events: none; 
+            transition: transform 0.05s linear; 
+        }
+
+        .dial-knob::after {
+            content: "";
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            width: 4px;
+            height: 15px;
+            background: var(--neon);
+            transform: translateX(-50%);
+            box-shadow: 0 0 15px var(--neon);
+        }
+
+        .frequency-display {
+            margin-top: 2.5rem;
+            font-family: 'Orbitron';
+            font-size: 3.5rem;
+            color: #fff;
+            letter-spacing: -2px;
+            transition: color 0.3s, text-shadow 0.3s;
+            pointer-events: none;
+        }
+
+        /* ================= MAIN SITE ================= */
+        #main-site {
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 2s ease, transform 2s cubic-bezier(0.22, 1, 0.36, 1);
+            filter: blur(10px);
+            height: 100%;
+            overflow-y: auto; 
+            display: none;
+        }
+
+        #main-site.active {
+            opacity: 1;
+            transform: scale(1);
+            filter: blur(0px);
+            display: block;
+        }
+
+        header {
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        header h1 {
+            font-family: 'Orbitron';
+            font-size: clamp(2.5rem, 10vw, 6rem);
+            color: var(--neon);
+            margin: 0;
+            text-shadow: 0 0 30px rgba(0, 247, 255, 0.4);
+            animation: flicker 4s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% { opacity: 1; }
+            20%, 24%, 55% { opacity: 0.8; }
+        }
+
+        header p { color: #888; max-width: 600px; margin-top: 1rem; font-weight: 300; line-height: 1.6; }
+
+        section {
+            max-width: 1000px;
+            margin: 0 auto 6rem auto;
+            padding: 2rem;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 247, 255, 0.05); 
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        h2 { 
+            font-family: 'Orbitron'; 
+            color: var(--gold); 
+            letter-spacing: 2px; 
+            margin-bottom: 2rem; 
+            text-transform: uppercase;
+            font-size: 1.3rem;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7), 0 0 25px rgba(255, 215, 0, 0.3);
+        }
+
+        h3 {
+            font-family: 'Orbitron';
+            color: var(--neon);
+            margin-top: 2rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .tracklist {
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 1rem;
+        }
+
+        .track {
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid var(--neon);
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .track:active, .track:hover { 
+            background: rgba(0, 247, 255, 0.15); 
+        }
+
+        iframe { width: 100%; border-radius: 15px; border: none; margin-top: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+
+        footer { text-align: center; padding: 4rem; color: #555; font-size: 0.8rem; border-top: 1px solid #111; }
+
+        /* ================= OVERLAYS (Apply BG Here Too) ================= */
+        .overlay-page {
+            position: fixed;
+            inset: 0;
+            z-index: 6000;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            overscroll-behavior: contain;
+            
+            /* UNIFIED BACKGROUND FOR ALL PAGES */
+            background-image: 
+                linear-gradient(to bottom, rgba(2, 10, 25, 0.92), rgba(0, 0, 0, 0.98)),
+                url("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2070");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+
+        .overlay-page.active {
+            transform: translateY(0%);
+        }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 1rem;
+        }
+
+        .detail-title {
+            font-family: 'Orbitron';
+            font-size: 1.1rem;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            max-width: 80%;
+        }
+
+        .close-btn {
+            font-size: 2rem;
+            color: var(--text);
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .content-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #ddd;
+            line-height: 1.7;
+            font-size: 1rem;
+            padding-bottom: 6rem;
+        }
+
+        .info-block {
+            margin-bottom: 2rem;
+        }
+        
+        .info-title {
+            color: var(--gold);
+            font-family: 'Orbitron';
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+            padding-bottom: 5px;
+            display: inline-block;
+        }
+
+        .lore-btn {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 12px 25px;
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-family: 'Orbitron';
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            width: 100%; 
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="loader-screen">
+    <div class="loader"></div>
+</div>
+
+<div id="lock-screen">
+    <div class="lock-content">
+        <h1>TUNE TO 103.5 DAWN FM</h1>
+        <div class="dial-container" id="dial-zone">
+            <div class="dial-knob" id="knob"></div>
+        </div>
+        <div class="frequency-display" id="freq-val">88.0</div>
+    </div>
+</div>
+
+<div id="lore-page" class="overlay-page">
+    <div class="detail-header">
+        <div class="detail-title">THE 103.5 UNIVERSE LORE</div>
+        <div class="close-btn" onclick="toggleLore()">✕</div>
+    </div>
+    <div class="content-container">
+        
+        <div class="info-block">
+            <div class="info-title">I. The Setting: Purgatory Gridlock</div>
+            <p>The "Universe" of Dawn FM is not a physical location but a temporal loop occurring in the split second between life and the afterlife.</p>
+            <ul style="list-style: none; padding: 0; margin-top: 1rem;">
+                <li style="margin-bottom: 1rem;"><strong style="color: var(--neon);">The Tunnel:</strong> Visualized as a never-ending traffic jam in a dark tunnel. The cars are stationary, representing the inability of the soul to move forward until it "unwinds the mind."</li>
+                <li><strong style="color: var(--neon);">The Frequency:</strong> 103.5 Dawn FM is the only signal that can penetrate this void. It is a "sonic sedative" designed to guide the listener through a "painless transition." If the listener fails to tune in, they remain stuck in the "Abyss"—a state of eternal regret.</li>
+            </ul>
+        </div>
+
+        <div class="info-block">
+            <div class="info-title">II. Key Entities & Characters</div>
+            <p><strong>The DJ (The Narrator):</strong> Voiced by Jim Carrey, he is the Gatekeeper or a "Modern Virgil." He is not a god, but a guide who uses the medium of radio to help souls "align" their spirits. His calm tone masks the terrifying reality of the transition.</p>
+            <p style="margin-top: 1rem;"><strong>Old Abel:</strong> The physical manifestation of "Phantom Regret." His aged appearance represents the emotional toll of a life spent in hedonism. He wears a hearing aid, symbolizing his attempt to tune into the divine frequency amidst the noise of his past.</p>
+            <p style="margin-top: 1rem;"><strong>The Cult (The Spectators):</strong> Masked figures representing the "Idolization of Pain." They propped up the protagonist during his self-destruction in <em>After Hours</em> and now "harvest" his soul in Purgatory.</p>
+        </div>
+
+        <div class="info-block">
+            <div class="info-title">III. The Narrative Cycle</div>
+            <p>The lore connects Dawn FM as the middle child of a transformative trilogy:</p>
+            <ul style="list-style: none; padding: 0; margin-top: 1rem;">
+                <li style="margin-bottom: 0.8rem;"><span style="color: #ff4444;">1. After Hours (The Descent):</span> The Night. High-speed, neon-lit, and bloody. Ends with the "death" of the character.</li>
+                <li style="margin-bottom: 0.8rem;"><span style="color: var(--neon);">2. Dawn FM (The Limbo):</span> The Transition. The protagonist is stuck in the car he was speeding in, but it is now frozen in Purgatory traffic.</li>
+                <li><span style="color: var(--gold);">3. Hurry Up Tomorrow (The Rebirth):</span> The Light. Once "Phantom Regret" is conquered, the "Old Man" is shed to allow for spiritual reincarnation.</li>
+            </ul>
+        </div>
+
+        <div class="info-block">
+            <div class="info-title">🎨 Visual Symbolism Guide</div>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem; border: 1px solid #333;">
+                <tr style="border-bottom: 1px solid #444;">
+                    <td style="padding: 10px; color: var(--gold); font-weight: bold;">The Blue Light</td>
+                    <td style="padding: 10px; color: #ccc;">Unlike the "Red Light" of lust in Vegas, this represents divine truth and the cold reality of morning.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #444;">
+                    <td style="padding: 10px; color: var(--gold); font-weight: bold;">The Wheel</td>
+                    <td style="padding: 10px; color: #ccc;">Seen in "Sacrifice"; symbolizes Samsara or the endless loop of fame and suffering.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #444;">
+                    <td style="padding: 10px; color: var(--gold); font-weight: bold;">The Ants</td>
+                    <td style="padding: 10px; color: #ccc;">Symbolize the hidden decay and rot beneath the surface of glamour ("Gasoline").</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; color: var(--gold); font-weight: bold;">Young vs. Old</td>
+                    <td style="padding: 10px; color: #ccc;">"Young Abel" attacking "Old Abel" represents how past mistakes and ego beat us down even when we try to grow.</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="info-block" style="border: 1px solid var(--gold); padding: 1.5rem; border-radius: 10px; background: rgba(255, 215, 0, 0.05);">
+            <h3 style="color: var(--gold); text-align: center; margin-top: 0;">📜 The "Phantom Regret" Doctrine</h3>
+            <p style="text-align: center; font-style: italic; margin-bottom: 1rem;">"If you're not all there, you'll be stuck in the dark..."</p>
+            <p>To exit the Dawn FM universe, the protagonist must achieve:</p>
+            <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                <li><strong>Accountability:</strong> Facing the women and friends he hurt.</li>
+                <li><strong>Ego Death:</strong> Recognizing that his "Red Suit" persona was a mask.</li>
+                <li><strong>Forgiveness:</strong> Letting go of the "phantom" of who he used to be.</li>
+            </ul>
+        </div>
+
+        <br><br>
+        <div style="text-align: center;">
+            <button class="lore-btn" onclick="toggleLore()">Return to Radio</button>
+        </div>
+    </div>
+</div>
+
+<div id="song-detail" class="overlay-page">
+    <div class="detail-header">
+        <div class="detail-title" id="sd-title">Song Title</div>
+        <div class="close-btn" onclick="closeSongDetail()">✕</div>
+    </div>
+    <div class="content-container">
+        <div id="sd-player-container" style="margin-bottom: 2rem;"></div>
+
+        <div class="info-block">
+            <div class="info-title">Meaning & Significance</div>
+            <p id="sd-meaning"></p>
+        </div>
+        <div class="info-block">
+            <div class="info-title">Effect on His Life</div>
+            <p id="sd-effect"></p>
+        </div>
+        <div class="info-block">
+            <div class="info-title">The Listener Experience</div>
+            <p id="sd-experience"></p>
+        </div>
+
+        <br>
+        <button class="lore-btn" onclick="closeSongDetail()">Back to Tracklist</button>
+    </div>
+</div>
+
+<div id="main-site">
+    <div class="bg"></div>
+    <div class="static-overlay"></div>
+
+    <header>
+        <h1>103.5 DAWN FM</h1>
+        <p>The radio station that plays while you wait in purgatory.</p>
+    </header>
+
+    <section>
+        <h2>The Narrative</h2>
+        <p><strong>Dawn FM (2022)</strong> is a deeply cinematic experience designed to be the "purgatory" following the self-destruction seen in <em>After Hours</em>.</p>
+        <br>
+        <button class="lore-btn" onclick="toggleLore()">Explore the Lore</button>
+    </section>
+
+    <section>
+        <h2>Tracklist (Click for Info)</h2>
+        <div class="tracklist" id="tracklist-container">
+            <div class="track" onclick="openSongDetail(0)">1. Dawn FM (feat. Jim Carrey)</div>
+            <div class="track" onclick="openSongDetail(1)">2. Gasoline</div>
+            <div class="track" onclick="openSongDetail(2)">3. How Do I Make You Love Me?</div>
+            <div class="track" onclick="openSongDetail(3)">4. Take My Breath</div>
+            <div class="track" onclick="openSongDetail(4)">5. Sacrifice</div>
+            <div class="track" onclick="openSongDetail(5)">6. A Tale by Quincy</div>
+            <div class="track" onclick="openSongDetail(6)">7. Out of Time</div>
+            <div class="track" onclick="openSongDetail(7)">8. Here We Go… Again</div>
+            <div class="track" onclick="openSongDetail(8)">9. Best Friends</div>
+            <div class="track" onclick="openSongDetail(9)">10. Is There Someone Else?</div>
+            <div class="track" onclick="openSongDetail(10)">11. Starry Eyes</div>
+            <div class="track" onclick="openSongDetail(11)">12. Every Angel Is Terrifying</div>
+            <div class="track" onclick="openSongDetail(12)">13. Don’t Break My Heart</div>
+            <div class="track" onclick="openSongDetail(13)">14. I Heard You’re Married</div>
+            <div class="track" onclick="openSongDetail(14)">15. Less Than Zero</div>
+            <div class="track" onclick="openSongDetail(15)">16. Phantom Regret by Jim</div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Know who really is "The Weeknd":</h2>
+        <iframe src="https://www.youtube.com/embed/XBT-8QcEReY" height="380" allow="encrypted-media; autoplay" frameborder="0" allowfullscreen></iframe>
+    </section>
+
+    <footer>
+        <p>Dawn FM © 2022 – The Weeknd. Designed for the Afterlife.</p>
+    </footer>
+</div>
+
+<script>
+    const lockScreen = document.getElementById('lock-screen');
+    const mainSite = document.getElementById('main-site');
+    const knob = document.getElementById('knob');
+    const dialZone = document.getElementById('dial-zone');
+    const freqVal = document.getElementById('freq-val');
+    const lorePage = document.getElementById('lore-page');
+    const loader = document.getElementById('loader-screen'); // Loader Element
+    
+    // Song Detail Elements
+    const songDetail = document.getElementById('song-detail');
+    const sdTitle = document.getElementById('sd-title');
+    const sdMeaning = document.getElementById('sd-meaning');
+    const sdEffect = document.getElementById('sd-effect');
+    const sdExperience = document.getElementById('sd-experience');
+    const sdPlayerContainer = document.getElementById('sd-player-container');
+
+    // === HIDE LOADER AFTER 3 SECONDS ===
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            loader.classList.add('hidden');
+        }, 3000); 
+    });
+
+    // === SONG DATABASE ===
+    const songs = [
+        {
+            title: "Dawn FM (feat. Jim Carrey)",
+            url: "https://open.spotify.com/embed/track/6krYS8KtmNAYyb5uTZiYW4?utm_source=generator",
+            meaning: "The title track acts as the 'tuning in' moment. It sets the stage for a fictional radio station (103.5 Dawn FM) that plays while the listener is stuck in a state of purgatory—symbolized by a traffic jam at the end of a tunnel.",
+            effect: "This was a major conceptual pivot for Abel. By enlisting a childhood hero like Jim Carrey, he grounded the album in a sense of surrealist nostalgia.",
+            experience: "It feels like waking up in a dream you don't quite understand. The bird chirps and the atmospheric synths create a false sense of peace that is quickly undercut by the realization that you’re 'out of time.'"
+        },
+        {
+            title: "Gasoline",
+            url: "https://open.spotify.com/embed/track/3KyKxJ4P3pVCgaZwaq2rUC?utm_source=generator",
+            meaning: "'Gasoline' is the jarring realization of self-decay. Abel portrays a character operating on 'autopilot,' fueled by nihilism and substance dependency. He addresses a partner, asking them to literally 'watch him sleep' and 'pour out the gasoline' if he stops breathing.",
+            effect: "Abel experimented with a low, distorted register here, proving he wasn't afraid to sound 'unpleasant' or 'old' to serve the story. It reflects a period where he began questioning the longevity of 'The Weeknd' persona.",
+            experience: "It’s the sonic equivalent of a caffeine crash. The 80s synth-pop beat demands movement, but the vocals are heavy with existential dread. You feel like you’re watching someone spiral in a high-speed car chase at 5 AM."
+        },
+        {
+            title: "How Do I Make You Love Me?",
+            url: "https://open.spotify.com/embed/track/2Ghp894n1laIf2w98VeAOJ?utm_source=generator",
+            meaning: "This is a frantic plea for validation from a man who has forgotten how to be human. After years of being 'heartless,' he is now desperate for a real connection but realizes he doesn't know the 'formula' for it.",
+            effect: "This song showcases his technical growth, featuring seamless transitions that define the album's flow. It highlights his obsession with the 'perfect pop song'—taking the structure of MJ or Prince and layering it with modern, dark anxieties.",
+            experience: "It feels high-stakes and cinematic. The shimmering synths evoke a sense of urgency, making the listener feel the 'rush' of a heart beating too fast. It’s the feeling of standing on the edge of a commitment you’re terrified of."
+        },
+        {
+            title: "Take My Breath",
+            url: "https://open.spotify.com/embed/track/2vgUijXOTRMnWXDtvgMp2b?utm_source=generator",
+            meaning: "This track explores the 'high' of a dangerous relationship. It uses the metaphor of 'breath' to describe a love that is both life-giving and suffocating. It represents the peak of sensory experience.",
+            effect: "As the lead single, it proved Abel could still dominate the charts with a 'pure' dance track. However, the extended album version shows his commitment to the 'disco' craft, using long instrumental breaks to build tension.",
+            experience: "It is an absolute shot of adrenaline. The driving bassline and the 'gasping' vocal samples create a physical reaction in the listener. It feels like being in the center of a crowded, strobe-lit club where you lose all sense of time."
+        },
+        {
+            title: "Sacrifice",
+            url: "https://open.spotify.com/embed/track/1nH2PkJL1XoUq8oE6tBZoU?utm_source=generator",
+            meaning: "'Sacrifice' is the collision between his desire for love and his addiction to his own freedom. He admits that he isn't ready to give up his lifestyle for anyone. He is 'sacrificing' a potential future with a good person for the sake of his current independence.",
+            effect: "Sampling Alicia Myers, Abel paid homage to funk history while reinforcing his 'toxic' brand with more self-awareness. It reflects a phase where he realized that to be the 'greatest artist,' he had to 'sacrifice' a stable personal life.",
+            experience: "This is the ultimate 'main character' anthem. The aggressive guitar riff and punchy bassline provide an immediate ego boost. When you listen to this, you feel powerful and detached."
+        },
+        {
+            title: "A Tale by Quincy",
+            url: "https://open.spotify.com/embed/track/759ndr57jb0URg4j9YSWml?utm_source=generator",
+            meaning: "This interlude features legendary producer Quincy Jones reflecting on how his own childhood trauma—specifically the absence of his mother—affected his ability to form healthy adult relationships.",
+            effect: "By including Quincy Jones, Abel bridges the gap between generations of R&B. It shows he is looking for mentors not just in music, but in life. It signifies a 'coming of age' moment.",
+            experience: "It’s a sobering moment of reflection. The listener is forced to pause and listen to a veteran’s wisdom. It feels like a late-night conversation with a grandfather figure."
+        },
+        {
+            title: "Out of Time",
+            url: "https://open.spotify.com/embed/track/2SLwbpExuoBDZBpjfefCtV?utm_source=generator",
+            meaning: "The emotional heart of the album. It’s a direct apology for a relationship he ruined by being 'absent.' He realizes he has finally changed into the man she wanted, but the clock has run out—she’s moved on.",
+            effect: "Sampling Japanese City Pop, Abel showed his vulnerability without any vocal effects. It softened his 'villain' image and proved he is capable of deep, quiet sorrow.",
+            experience: "It feels like a warm, nostalgic hug that ends in a heartbreak. It is lush and romantic, but as the lyrics sink in, you’re hit with the weight of 'what could have been.'"
+        },
+        {
+            title: "Here We Go… Again",
+            url: "https://open.spotify.com/embed/track/1NhjYYcYTRywc0di98xHxf?utm_source=generator",
+            meaning: "A status report on life at the top. It deals with the irony of finding a 'new love' while being a global icon. The 'here we go again' refers to the repetitive cycle of entering a romance while the world watches.",
+            effect: "Collaborating with Tyler, The Creator marked a meeting of two creative giants. It shows Abel acknowledging his reality as 'Hollywood royalty.' It’s a rare moment where he sounds content with his success.",
+            experience: "It feels like a luxury car ride through the hills at midnight. It is sophisticated and smooth. You feel a sense of 'cool' detachment."
+        },
+        {
+            title: "Best Friends",
+            url: "https://open.spotify.com/embed/track/1E5Xu8dur0fAjSP1VpVhAZ?utm_source=generator",
+            meaning: "'Best Friends' explores the messy boundary between friendship and sex. Abel warns a friend that getting intimate will 'ruin everything.' It signifies his self-awareness; he knows he is a great friend but a destructive lover.",
+            effect: "This track reinforces the 'purgatory' theme—the uncomfortable middle ground. It reflects Abel’s real-life struggle with boundaries and the loneliness of fame.",
+            experience: "The beat is bouncy and infectious, but there is a clear tension. The listener feels that 'cringe' of a complicated social situation."
+        },
+        {
+            title: "Is There Someone Else?",
+            url: "https://open.spotify.com/embed/track/0mL82sxCRjrs3br407IdJh?utm_source=generator",
+            meaning: "Paranoia takes center stage here. Having been the 'cheater' in the past, he now fears his partner is doing the same. It’s about the cycle of mistrust—the predator becomes the prey.",
+            effect: "It continues his exploration of the 'dark side of fame,' where trust is a rare commodity. Musically, it showcases his ability to use pitch-shifting to represent psychological states.",
+            experience: "It’s incredibly hypnotic. The vocal samples and steady beat create a trance-like state. You feel the 'itch' of suspicion—the nagging feeling that something is wrong."
+        },
+        {
+            title: "Starry Eyes",
+            url: "https://open.spotify.com/embed/track/6zzdyvVWjGrQBraSvuqJPY?utm_source=generator",
+            meaning: "A direct continuation of the previous track, acting as a raw plea. It’s about wanting to be the 'sanctuary' for someone broken by others. It suggests that this perfect, unhurt love might be an illusion.",
+            effect: "This is Abel at his most fragile. It marks a moment where the 'Weeknd' persona drops the ego completely. It’s a short, impactful track that serves as an emotional bridge.",
+            experience: "It feels like a secret whispered in the dark. The listener feels immense tenderness and fragility. It’s a 'breathless' song that makes you feel protective and sad."
+        },
+        {
+            title: "Every Angel Is Terrifying",
+            url: "https://open.spotify.com/embed/track/3vJcz8exedHCjQ9ed95NqU?utm_source=generator",
+            meaning: "This track starts as a profound poem about the overwhelming nature of the divine, then shifts into a satirical, high-energy 'commercial' for the afterlife.",
+            effect: "It shows Abel’s sense of humor and his critique of consumerism. By breaking the immersion of the 'radio station' with a fake ad, he highlights the 'purgatory' we live in today.",
+            experience: "It’s a 'brain-reset' moment. You start with a sense of awe and end with a feeling of confusion and amusement. It makes the listener feel like they are truly listening to a radio station."
+        },
+        {
+            title: "Don’t Break My Heart",
+            url: "https://open.spotify.com/embed/track/6a4GH1gljLL7VvmO9u5O92?utm_source=generator",
+            meaning: "Despite his cynicism, this is a moment of total surrender. He is letting his guard down but is terrified of the consequences. The 'heart' he refers to is one that has been hardened by 'wicked games.'",
+            effect: "This track highlights his ability to create 'Dark Disco.' It represents the conflict of his 30s: the desire to settle down vs. the ghosts of his 20s.",
+            experience: "A high-energy club track with a pulsing undercurrent. You feel the 'danger' of the dancefloor. It’s the feeling of a new relationship where the stakes feel paralyzing."
+        },
+        {
+            title: "I Heard You’re Married",
+            url: "https://open.spotify.com/embed/track/5XbA7TAqsD0fj0dGBrbb0D?utm_source=generator",
+            meaning: "A song about the 'unethical' side of romance. Abel finds out the woman he’s seeing is actually married. He refuses to be the 'other man,' showing a new sense of moral boundaries.",
+            effect: "Collaborating with Lil Wayne added a classic Hip-Hop edge. It signifies Abel's move toward 'clarity'—he no longer wants the drama or the secrets that defined his earlier work.",
+            experience: "It’s groovy and slightly frustrated. You feel the irritation in the lyrics but the smoothness in the production. As a listener, you feel a sense of 'standing your ground.'"
+        },
+        {
+            title: "Less Than Zero",
+            url: "https://open.spotify.com/embed/track/2D4dV2KXDTszzJ3p3cFqhA?utm_source=generator",
+            meaning: "The album's musical climax. It’s a confession that he feels 'less than zero' to the person who truly knows his 'darkest holes.' It’s the moment of ultimate judgment in purgatory.",
+            effect: "This became a defining anthem. It represents Abel facing his demons without a mask. It signifies his readiness to potentially leave 'The Weeknd' name behind.",
+            experience: "It’s a 'stadium-sized' emotional release. The upbeat, acoustic production creates a sense of triumph, but the lyrics are devastating. You feel a massive sense of catharsis."
+        },
+        {
+            title: "Phantom Regret by Jim",
+            url: "https://open.spotify.com/embed/track/1NlK2NtpuUazpziLhnJwEV?utm_source=generator",
+            meaning: "The final spoken-word poem by Jim Carrey. It delivers the album's ultimate message: 'Heaven's for those who let go of regret.' It’s an instruction manual for finding peace.",
+            effect: "This track ties the entire 'trilogy' together. It shows Abel’s growth from the self-loathing kid of Trilogy to a man seeking spiritual enlightenment.",
+            experience: "It’s incredibly grounding. As Jim Carrey’s voice fades out, the listener is left with a sense of profound calm. It makes you feel like the 'storm' of the album has passed."
+        }
+    ];
+
+    let isDragging = false;
+    let startAngle = 0;
+    let currentRotation = 0;
+    let frequency = 88.0;
+
+    // --- OVERLAY LOGIC ---
+    function toggleLore() {
+        lorePage.classList.toggle('active');
+    }
+
+    function openSongDetail(index) {
+        const song = songs[index];
+        sdTitle.innerText = song.title;
+        sdMeaning.innerText = song.meaning;
+        sdEffect.innerText = song.effect;
+        sdExperience.innerText = song.experience;
+        
+        // Inject Iframe
+        sdPlayerContainer.innerHTML = `<iframe style="border-radius:12px" src="${song.url}" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+
+        songDetail.classList.add('active');
+        document.body.style.overflow = "hidden"; 
+    }
+
+    function closeSongDetail() {
+        songDetail.classList.remove('active');
+        // Clear iframe to stop music when closing
+        sdPlayerContainer.innerHTML = ""; 
+        document.body.style.overflow = "auto";
+    }
+
+    // --- DIAL LOGIC (MOBILE OPTIMIZED) ---
+    function updateFrequency(rotation) {
+        let normalized = (rotation % 360 + 360) % 360;
+        let newFreq = 88.0 + (normalized / 360) * 20;
+        frequency = parseFloat(newFreq.toFixed(1));
+        freqVal.innerText = frequency.toFixed(1);
+
+        if (frequency === 103.5) {
+            freqVal.style.color = "var(--neon)";
+            freqVal.style.textShadow = "0 0 40px var(--neon)";
+            
+            setTimeout(() => {
+                lockScreen.classList.add('unlocked');
+                document.body.style.position = "static"; /* Unlock Main Site Scroll */
+                setTimeout(() => {
+                    mainSite.classList.add('active'); 
+                }, 200);
+            }, 600);
+        } else {
+            freqVal.style.color = "white";
+            freqVal.style.textShadow = "none";
+        }
+    }
+
+    function getAngle(x, y) {
+        const rect = dialZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
+    }
+
+    // --- TOUCH EVENTS ---
+    dialZone.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        startAngle = getAngle(e.touches[0].clientX, e.touches[0].clientY) - currentRotation;
+        e.preventDefault(); 
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const angle = getAngle(e.touches[0].clientX, e.touches[0].clientY);
+        currentRotation = angle - startAngle;
+        knob.style.transform = `rotate(${currentRotation}deg)`;
+        updateFrequency(currentRotation);
+        e.preventDefault(); 
+    }, { passive: false });
+
+    window.addEventListener('touchend', () => isDragging = false);
+
+    // --- MOUSE EVENTS ---
+    dialZone.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startAngle = getAngle(e.clientX, e.clientY) - currentRotation;
+        dialZone.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const angle = getAngle(e.clientX, e.clientY);
+        currentRotation = angle - startAngle;
+        knob.style.transform = `rotate(${currentRotation}deg)`;
+        updateFrequency(currentRotation);
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDragging = false;
+        dialZone.style.cursor = 'grab';
+    });
+
+    // Start Locked
+    document.body.style.overflow = "hidden";
+</script>
+
+</body>
+</html>
